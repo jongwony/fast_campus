@@ -1,0 +1,8 @@
+yfinance
+langchain
+ipython
+# pandas dataframe to markdown
+# https://github.com/astanin/python-tabulate
+tabulate
+streamlit
+meilisearch
