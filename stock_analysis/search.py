@@ -15,3 +15,7 @@ def bootstrap_stocks():
 
 def stock_search(query):
     return client.index('stocks').search(query)
+
+
+if __name__ == '__main__':
+    bootstrap_stocks()
