@@ -4,10 +4,10 @@ class Vector:
         self.y = y
 
     def __str__(self):
-        return f"Vector({self.x}, {self.y})"
+        return f"VectorS({self.x}, {self.y})"
 
     def __repr__(self):
-        return f"Vector({self.x}, {self.y})"
+        return f"VectorR({self.x}, {self.y})"
 
     def __add__(self, other):
         return Vector(self.x + other.x, self.y + other.y)
@@ -28,6 +28,19 @@ class Vector:
 
     def __call__(self):
         return (self.x ** 2 + self.y ** 2) ** 0.5
+
+    def __iter__(self):
+        yield self.x
+        yield self.y
+
+    def __contains__(self, item):
+        return item == self.x or item == self.y
+
+    def __reversed__(self):
+        return Vector(self.y, self.x)
+
+    def __matmul__(self, other):
+        return self.x * other.x + self.y * other.y
 
 
 v1 = Vector(2, 3)
