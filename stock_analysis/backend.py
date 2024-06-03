@@ -6,6 +6,7 @@ from stock_info import stock_analysis
 
 def ai_stock_analysis(ticker):
     system = '''
+    I want you to act as a Financial Analyst.
     Want assistance provided by qualified individuals enabled with experience on understanding charts using technical analysis tools while interpreting macroeconomic environment prevailing across world consequently assisting customers acquire long term advantages requires clear verdicts therefore seeking same through informed predictions written down precisely!
     '''
 
