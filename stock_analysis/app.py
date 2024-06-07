@@ -1,83 +1,94 @@
+import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
-from stock_info import stock_analysis
-from backend import ai_stock_analysis
-from search import stock_search
-from comment import create_connection, create_table, insert_comment, get_all_comments
+from stock_info import 재무제표처리, 가치주, 우량주, 거래량
+from backend import AI_report
 
-@st.cache_data
-def cache_ai_stock_analysis(ticker):
-    return ai_stock_analysis(ticker).content
+# Set the page title
+st.title("주식 정보 분석 대시보드")
 
+# Create a text input for search
+search_query = st.text_input("검색창")
 
-# 메인 페이지 설정
-st.title('주식 정보 및 분석 대시보드')
+# Create a select box for search results list
+search_results = st.selectbox("검색 결과 리스트", ["Result 1", "Result 2", "Result 3"])
 
-# 사이드바 검색 기능
-query = st.text_input("기호 또는 회사 이름을 입력하세요:")
-results = stock_search(query)
+# Create tabs for different sections
+tabs = ["회사 기본 정보", "AI 분석 보고서", "종목 토론실"]
+tab1, tab2, tab3 = st.tabs(tabs)
 
-# 드롭다운 메뉴로 검색 결과 표시
-if results['hits']:
-    # 사용자가 선택할 수 있는 드롭다운 생성
-    options = [f"{result['Symbol']} - {result['Security Name']}" for result in results['hits']]
-    selected_option = st.selectbox("검색 결과에서 선택하세요:", options)
+# Content for "회사 기본 정보" tab
+with tab1:
+    data = 재무제표처리()
+    st.header("회사 기본 정보")
+    # 현금 흐름 항목 시각화
+    st.subheader('Cash Flow Statement')
+    fig, ax = plt.subplots(figsize=(14, 7))
+    data['cashflow_items'].plot(kind='bar', ax=ax)
+    ax.set_title(f'Cash Flow Statement')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Amount (in billions)')
+    ax.legend(loc='upper left')
+    st.pyplot(fig)
 
-    # 선택된 옵션을 저장
-    st.session_state['selected_symbol'] = selected_option
-else:
-    st.write("검색 결과가 없습니다.")
+    st.subheader('Income Statement')
+    fig, ax = plt.subplots(figsize=(14, 7))
+    data['income_statement'].plot(kind='bar', ax=ax)
+    ax.set_title(f'Income Statement')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Amount (in billions)')
+    ax.legend(loc='upper left')
+    st.pyplot(fig)
 
-정보탭, 보고서탭, 토론탭 = st.tabs(['주식 정보', 'AI 분석 보고서', '종목토론방'])
+    st.subheader('Balance Sheet')
+    fig, ax = plt.subplots(figsize=(14, 7))
+    data['balance_sheet_items'].plot(kind='bar', ax=ax)
+    ax.set_title(f'Balance Sheet')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Amount (in billions)')
+    ax.legend(loc='upper left')
+    st.pyplot(fig)
 
-# 선택된 Symbol을 기반으로 추가 로직 수행 (예시)
-if 'selected_symbol' in st.session_state:
-    symbol, company = st.session_state['selected_symbol'].split(' - ', 1)
-    try:
-        report = stock_analysis(symbol)
-    except KeyError:
-        st.error(f'{company}에 대한 정보를 찾을 수 없습니다.')
-    else:
-        # 로직 조건 분기
-        정보탭.title('손익계산서')
-        정보탭.line_chart(report['분기별_손익계산서'].drop('Basic EPS').T)
+    # 가치주 비율 출력
+    value_metrics = 가치주()
 
-        정보탭.title('EPS')
-        정보탭.line_chart(report['분기별_손익계산서'].loc['Basic EPS'].T)
+    # 데이터프레임 생성
+    df_value_metrics = pd.DataFrame(list(value_metrics.items()), columns=['Metric', 'Value'])
 
-        정보탭.title('대차대조표')
-        정보탭.line_chart(report['분기별_대차대조표'].T)
+    # 가치주 비율 출력
+    st.subheader(f'Value Metrics')
+    st.dataframe(df_value_metrics)
 
-        정보탭.title('현금흐름표')
-        정보탭.line_chart(report['분기별_현금흐름표'].T)
+    # 우량주 비율 가져오기
+    blue_chip_metrics = 우량주()
 
-        # 투자 추천 섹션
-        보고서탭.header(company)
-        if 보고서탭.button('AI 분석 보고서 가져오기'):
-            보고서탭.markdown(cache_ai_stock_analysis(symbol))
+    # 데이터프레임 생성
+    df_blue_chip_metrics = pd.DataFrame(list(blue_chip_metrics.items()), columns=['Metric', 'Value'])
 
+    # 우량주 비율 출력
+    st.subheader(f'Blue Chip Metrics')
+    st.dataframe(df_blue_chip_metrics)
 
-# SQLite 데이터베이스 연결 및 테이블 생성
-conn = create_connection()
-create_table(conn)
+    # 거래량 시각화
+    st.subheader(f'Volume Data')
+    stock_data = 거래량()
+    st.line_chart(stock_data['volume'])
 
-# 댓글 입력 섹션
-토론탭.subheader('댓글을 입력하세요')
-comment = 토론탭.text_input('댓글')
+    # 거래량 데이터프레임 표시
+    st.subheader(f'Volume Data (Table)')
+    st.dataframe(stock_data['volume'])
 
-if 토론탭.button('댓글 남기기'):
-    if comment:
-        insert_comment(conn, f"{symbol} - {comment}")
-        토론탭.success('댓글이 성공적으로 저장되었습니다.')
-    else:
-        토론탭.error('댓글을 입력하세요.')
+# Content for "AI 분석 보고서" tab
+with tab2:
+    st.header("AI 분석 보고서")
+    if st.button("보고서 불러오기"):
+        with st.spinner(text='In progress'):
+            data = AI_report()
+            st.success('Done')
+        st.write(data)
 
-# 저장된 댓글 표시 섹션
-토론탭.subheader('저장된 댓글')
-comments = get_all_comments(conn)
-for comment in sorted(comments, reverse=True):
-    시간, 댓글 = comment
-    토론탭.write(f"{시간}: {댓글}")
-
-# SQLite 데이터베이스 연결 종료
-# conn.close()
+# Content for "종목 토론실" tab
+with tab3:
+    st.header("종목 토론실")
+    st.write("여기에 종목 토론실 내용을 추가하세요.")

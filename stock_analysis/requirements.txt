@@ -2,8 +2,7 @@ yfinance
 langchain
 langchain_openai
 ipython
-# pandas dataframe to markdown
-# https://github.com/astanin/python-tabulate
-tabulate
 streamlit
 meilisearch
+python-dotenv
+matplotlib

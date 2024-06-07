@@ -1,50 +1,137 @@
-import pandas as pd
 import yfinance as yf
+import matplotlib.pyplot as plt
 
 
-def stock_analysis(ticker):
-    # Apple의 주식 기호 'AAPL'로 Ticker 객체 생성
-    aapl = yf.Ticker(ticker)
+# 주식 티커 설정
+ticker = 'AAPL'
 
-    # 재무제표 가져오기
-    # balance_sheet = aapl.balance_sheet  # 대차대조표
-    # cash_flow = aapl.cashflow  # 현금흐름표
+# 티커 데이터 가져오기
+stock = yf.Ticker(ticker)
 
-    # 연간 또는 분기별 재무제표
-    # quarterly_financials = aapl.quarterly_financials  # 분기별 손익계산서
-    # quarterly_balance_sheet = aapl.quarterly_balance_sheet  # 분기별 대차대조표
 
-    분기별_손익계산서 = aapl.quarterly_income_stmt.loc[['Net Income', 'Total Revenue', 'Basic EPS']]
-    # 키를 빨리 찾는 방법
-    # q_bal = aapl.quarterly_balance_sheet
-    # 'Total Assets'
-    # q_bal[q_bal.index.str.contains('Asset')]
-    # 'Total Liabilities Net Minority Interest'
-    # q_bal[q_bal.index.str.contains('Liab')]
-    # 'Common Stock Equity'
-    # q_bal[q_bal.index.str.contains('Equity')]
-    분기별_대차대조표 = aapl.quarterly_balance_sheet.loc[['Total Assets', 'Total Liabilities Net Minority Interest', 'Common Stock Equity']]
-    분기별_현금흐름표 = aapl.quarterly_cash_flow.loc[['Free Cash Flow', 'Operating Cash Flow', 'Investing Cash Flow', 'Financing Cash Flow', 'Changes In Cash']]
-
-    # 정보 가져오기
-    info = aapl.info
-
-    # 수익성 지표 출력
-    # eps = info.get('trailingEps', 'N/A')  # 주당순이익
-    # pe_ratio = info.get('trailingPE', 'N/A')  # 주가수익비율
-    # pb_ratio = info.get('priceToBook', 'N/A')  # 주가순자산비율
-    # ps_ratio = info.get('priceToSalesTrailing12Months', 'N/A')  # 주가매출비율
-    # dividend_yield = info.get('dividendYield', 'N/A') * 100 if info.get('dividendYield') else 'N/A'  # 배당수익률
-    수익성지표 = pd.DataFrame.from_dict(
-        {k: info[k] for k in info if k in ['trailingEps', 'trailingPE', 'priceToBook', 'priceToSalesTrailing12Months', 'dividendYield']},
-        orient='index', columns=['Value'],
-    )
-
-    # return markdown
+def 재무제표():
+    # 재무제표 데이터 가져오기
+    income_statement = stock.financials
+    balance_sheet = stock.balance_sheet
+    cash_flow = stock.cashflow
     return {
-        '분기별_손익계산서': 분기별_손익계산서,
-        '분기별_대차대조표': 분기별_대차대조표,
-        '분기별_현금흐름표': 분기별_현금흐름표,
-        '수익성지표': 수익성지표,
+        'income_statement': income_statement,
+        'balance_sheet': balance_sheet,
+        'cash_flow': cash_flow,
     }
 
+
+def 재무제표처리():
+    # 주요 항목 선택
+    income_statement = stock.financials.loc[['Total Revenue', 'Gross Profit', 'Operating Income', 'Net Income']].T
+    balance_sheet_items = stock.balance_sheet.loc[['Total Assets', 'Total Liabilities Net Minority Interest', 'Stockholders Equity']].T
+    cashflow_items = stock.cashflow.loc[['Operating Cash Flow', 'Cash Flow From Continuing Operating Activities',
+                                  'Investing Cash Flow', 'Cash Flow From Continuing Investing Activities',
+                                  'Financing Cash Flow', 'Cash Flow From Continuing Financing Activities']].T
+    return {
+        'income_statement': income_statement,
+        'balance_sheet_items': balance_sheet_items,
+        'cashflow_items': cashflow_items,
+    }
+
+
+def 재무제표시각화():
+    # 재무제표 데이터 가져오기
+    재무제표데이터 = 재무제표처리()
+    income_statement = 재무제표데이터['income_statement']
+    balance_sheet_items = 재무제표데이터['balance_sheet_items']
+    cashflow_items = 재무제표데이터['cashflow_items']
+
+    # 수익 및 이익 항목 시각화
+    plt.figure(figsize=(14, 7))
+    income_statement.plot(kind='bar')
+    plt.title(f'{ticker} Income Statement')
+    plt.xlabel('Date')
+    plt.ylabel('Amount (in billions)')
+    plt.legend(loc='upper left')
+    plt.show()
+
+    # 자산 및 부채 항목 시각화
+    plt.figure(figsize=(14, 7))
+    balance_sheet_items.plot(kind='bar')
+    plt.title(f'{ticker} Balance Sheet')
+    plt.xlabel('Date')
+    plt.ylabel('Amount (in billions)')
+    plt.legend(loc='upper left')
+    plt.show()
+
+    # 현금 흐름 항목 시각화
+    plt.figure(figsize=(14, 7))
+    cashflow_items.plot(kind='bar')
+    plt.title(f'{ticker} Cash Flow Statement')
+    plt.xlabel('Date')
+    plt.ylabel('Amount (in billions)')
+    plt.legend(loc='upper left')
+    plt.show()
+
+
+def 가치주():
+    # P/E 비율
+    pe_ratio = stock.info['forwardPE']
+
+    # P/B 비율
+    pb_ratio = stock.info['priceToBook']
+
+    # PEG 비율
+    peg_ratio = stock.info['pegRatio']
+
+    # EV/EBITDA 비율
+    ev_ebitda_ratio = stock.info['enterpriseToEbitda']
+
+    # 배당 수익률
+    dividend_yield = stock.info['dividendYield']
+    return {
+        'pe_ratio': pe_ratio,
+        'pb_ratio': pb_ratio,
+        'peg_ratio': peg_ratio,
+        'ev_ebitda_ratio': ev_ebitda_ratio,
+        'dividend_yield': dividend_yield,
+    }
+
+
+def 우량주():
+    # ROE
+    roe = stock.info['returnOnEquity']
+
+    # ROA
+    roa = stock.info['returnOnAssets']
+
+    # 부채비율
+    debt_to_equity = stock.info['debtToEquity']
+
+    # 이자 및 세전이익
+    interest_coverage = stock.info['ebitda']
+
+    # 매출 성장률
+    revenue_growth = stock.info['revenueGrowth']
+
+    # 배당 지급률
+    dividend_payout_ratio = stock.info['payoutRatio']
+
+    # 현금 흐름 (Operating Cash Flow)
+    operating_cash_flow = stock.info['operatingCashflow']
+    return {
+        'roe': roe,
+        'roa': roa,
+        'debt_to_equity': debt_to_equity,
+        'interest_coverage': interest_coverage,
+        'revenue_growth': revenue_growth,
+        'dividend_payout_ratio': dividend_payout_ratio,
+        'operating_cash_flow': operating_cash_flow,
+    }
+
+
+def 거래량():
+    hist = stock.history(period='1mo')
+    return {
+        'volume': hist['Volume'],
+        'open': hist['Open'],
+        'high': hist['High'],
+        'low': hist['Low'],
+        'close': hist['Close'],
+    }

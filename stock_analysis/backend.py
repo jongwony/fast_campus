@@ -1,53 +1,45 @@
-from langchain_core.prompts import ChatPromptTemplate
+import os
+
 from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
 
-from stock_info import stock_analysis
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+from stock_info import 재무제표, 가치주, 우량주, 거래량
 
 
-def ai_stock_analysis(ticker):
-    system = '''
-    I want you to act as a Financial Analyst.
-    Want assistance provided by qualified individuals enabled with experience on understanding charts using technical analysis tools while interpreting macroeconomic environment prevailing across world consequently assisting customers acquire long term advantages requires clear verdicts therefore seeking same through informed predictions written down precisely!
-    '''
-
-    user = '''
-    We provide the information necessary for analysis.
-    Given markdown reports with triple quotes. 
-    As a Financial Analyst, Take a closer look at the numbers in the report and evaluate the company's growth trends and financial stability to help users discuss freely.
-    Provide your opinion to people so they can have an open discussion.
-    Please provide the report in Korean.
-
-    Stock Analysis Markdown: """
-    ### {ticker} Financials
+load_dotenv()
         
-    #### Quarterly Income Statement
-    {분기별_손익계산서}
+# 환경 변수 읽기
+llm = ChatOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-    #### Quarterly Balance Sheet
-    {분기별_대차대조표}
 
-    #### Quarterly Cash Flow
-    {분기별_현금흐름표}
-
-    #### Profitability Ratios
-    {수익성지표}
-    """
-    '''
-
+def AI_report():
     prompt = ChatPromptTemplate.from_messages([
-        ('system', system),
-        ('user', user),
+        ("system", """
+        I want you to act as a Financial Analyst.
+        Want assistance provided by qualified individuals enabled with experience on understanding charts using technical analysis tools while interpreting macroeconomic environment prevailing across world consequently assisting customers acquire long term advantages requires clear verdicts therefore seeking same through informed predictions written down precisely! First statement contains following content- “Can you tell us what future stock market looks like based upon current conditions ?”.
+        """),
+        ("user", ''' 
+        Here is the information required for analysis enclosed in triple quotation marks. As a financial analysis expert, please examine these indicators closely and conduct an open discussion to assess the company's growth or value.
+        Balance Sheet: """{재무제표}"""
+        Value Stock: """{가치주}"""
+        Blue Chip Stock: """{우량주}"""
+        Volume: """{거래량}"""
+
+        {input}
+
+        한글로 답변해 주세요.
+        ''')
     ])
+    output_parser = StrOutputParser()
 
-    llm = ChatOpenAI(model='gpt-4-turbo', temperature=0.2)
-
-    chain = prompt | llm
-    info = stock_analysis(ticker)
-
+    chain = prompt | llm | output_parser
     return chain.invoke({
-        'ticker': ticker,
-        '분기별_손익계산서': info['분기별_손익계산서'].to_markdown(),
-        '분기별_대차대조표': info['분기별_대차대조표'].to_markdown(),
-        '분기별_현금흐름표': info['분기별_현금흐름표'].to_markdown(),
-        '수익성지표': info['수익성지표'].to_markdown(),
+        "input": "엔비디아 주간 차트를 분석해주세요.",
+        "재무제표": 재무제표(),
+        "가치주": 가치주(),
+        "우량주": 우량주(),
+        "거래량": 거래량(),
     })
