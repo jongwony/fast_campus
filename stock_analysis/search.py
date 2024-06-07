@@ -19,5 +19,10 @@ def stock_search(query):
     return client.index('stocks').search(query)
 
 
+def delete_stocks():
+    client.delete_index('stocks')
+
+
 if __name__ == '__main__':
+    delete_stocks()
     bootstrap_stocks()

@@ -1,18 +1,37 @@
-import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
 
-from stock_info import 재무제표처리, 가치주, 우량주, 거래량
+from stock_info import Stock
 from backend import AI_report
+from search import stock_search
 
 # Set the page title
 st.title("주식 정보 분석 대시보드")
 
+
+class SearchResult:
+    def __init__(self, item):
+        self.item = item
+
+    @property
+    def symbol(self):
+        return self.item['Symbol']
+    
+    @property
+    def name(self):
+        return self.item['Name']
+
+    def __str__(self):
+        return f"{self.symbol}: {self.name}"
+
+
 # Create a text input for search
 search_query = st.text_input("검색창")
+hits = stock_search(search_query)['hits']
+search_results = [SearchResult(hit) for hit in hits]
 
 # Create a select box for search results list
-search_results = st.selectbox("검색 결과 리스트", ["Result 1", "Result 2", "Result 3"])
+
+selected = st.selectbox("검색 결과 리스트", search_results)
 
 # Create tabs for different sections
 tabs = ["회사 기본 정보", "AI 분석 보고서", "종목 토론실"]
@@ -20,71 +39,46 @@ tab1, tab2, tab3 = st.tabs(tabs)
 
 # Content for "회사 기본 정보" tab
 with tab1:
-    data = 재무제표처리()
+    stock = Stock(selected.symbol)
     st.header("회사 기본 정보")
-    # 현금 흐름 항목 시각화
-    st.subheader('Cash Flow Statement')
-    fig, ax = plt.subplots(figsize=(14, 7))
-    data['cashflow_items'].plot(kind='bar', ax=ax)
-    ax.set_title(f'Cash Flow Statement')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Amount (in billions)')
-    ax.legend(loc='upper left')
-    st.pyplot(fig)
-
-    st.subheader('Income Statement')
-    fig, ax = plt.subplots(figsize=(14, 7))
-    data['income_statement'].plot(kind='bar', ax=ax)
-    ax.set_title(f'Income Statement')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Amount (in billions)')
-    ax.legend(loc='upper left')
-    st.pyplot(fig)
-
-    st.subheader('Balance Sheet')
-    fig, ax = plt.subplots(figsize=(14, 7))
-    data['balance_sheet_items'].plot(kind='bar', ax=ax)
-    ax.set_title(f'Balance Sheet')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Amount (in billions)')
-    ax.legend(loc='upper left')
-    st.pyplot(fig)
-
-    # 가치주 비율 출력
-    value_metrics = 가치주()
-
-    # 데이터프레임 생성
-    df_value_metrics = pd.DataFrame(list(value_metrics.items()), columns=['Metric', 'Value'])
-
-    # 가치주 비율 출력
-    st.subheader(f'Value Metrics')
-    st.dataframe(df_value_metrics)
-
-    # 우량주 비율 가져오기
-    blue_chip_metrics = 우량주()
-
-    # 데이터프레임 생성
-    df_blue_chip_metrics = pd.DataFrame(list(blue_chip_metrics.items()), columns=['Metric', 'Value'])
-
-    # 우량주 비율 출력
-    st.subheader(f'Blue Chip Metrics')
-    st.dataframe(df_blue_chip_metrics)
-
     # 거래량 시각화
-    st.subheader(f'Volume Data')
-    stock_data = 거래량()
-    st.line_chart(stock_data['volume'])
+    st.subheader(f'거래량')
+    stock_data = stock.금융정보()
+    st.line_chart(stock_data['history']['Volume'])
 
-    # 거래량 데이터프레임 표시
-    st.subheader(f'Volume Data (Table)')
-    st.dataframe(stock_data['volume'])
+    st.header("재무제표")
+    cols = st.columns(3)
+    cols[0].subheader("매출액")
+    cols[0].line_chart(stock_data['income_statement'].loc['Total Revenue'])
+    cols[1].subheader("순이익")
+    cols[1].line_chart(stock_data['income_statement'].loc['Net Income'])
+    cols[2].subheader("영업이익")
+    cols[2].line_chart(stock_data['income_statement'].loc['Operating Income'])
+
+    cols = st.columns(3)
+    cols[0].subheader("자산")
+    cols[0].line_chart(stock_data['balance_sheet'].loc['Total Assets'])
+    cols[1].subheader("부채")
+    cols[1].line_chart(stock_data['balance_sheet'].loc['Total Liabilities Net Minority Interest'])
+    cols[2].subheader("자본")
+    cols[2].line_chart(stock_data['balance_sheet'].loc['Stockholders Equity'])
+
+    cols = st.columns(4)
+    cols[0].subheader("영업 현금흐름")
+    cols[0].line_chart(stock_data['cash_flow'].loc['Operating Cash Flow'])
+    cols[1].subheader("투자 현금흐름")
+    cols[1].line_chart(stock_data['cash_flow'].loc['Investing Cash Flow'])
+    cols[2].subheader("재무 현금흐름")
+    cols[2].line_chart(stock_data['cash_flow'].loc['Financing Cash Flow'])
+    cols[3].subheader("순 현금흐름")
+    cols[3].line_chart(stock_data['cash_flow'].loc['Free Cash Flow'])
 
 # Content for "AI 분석 보고서" tab
 with tab2:
     st.header("AI 분석 보고서")
     if st.button("보고서 불러오기"):
         with st.spinner(text='In progress'):
-            data = AI_report()
+            data = AI_report(selected.symbol)
             st.success('Done')
         st.write(data)
 
