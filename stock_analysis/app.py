@@ -1,8 +1,10 @@
 import streamlit as st
 
 from stock_info import Stock
+
 from backend import AI_report
 from search import stock_search
+from comment import create_connection, create_table, insert_comment, get_all_comments
 
 # Set the page title
 st.title("주식 정보 분석 대시보드")
@@ -85,4 +87,15 @@ with tab2:
 # Content for "종목 토론실" tab
 with tab3:
     st.header("종목 토론실")
-    st.write("여기에 종목 토론실 내용을 추가하세요.")
+    conn = create_connection()
+    create_table(conn)
+
+    # 앞에서부터 그리기 때문에 댓글 입력창이 위에 나옴
+    new_comment = st.text_area("댓글을 입력하세요")
+    if st.button("댓글 작성"):
+        insert_comment(conn, f'{selected.name} - {new_comment}')
+        st.success("댓글이 작성되었습니다")
+
+    for comment in get_all_comments(conn):
+        comment_time, comment_text = comment
+        st.write(f"{comment_time}: {comment_text}")
