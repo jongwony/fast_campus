@@ -6,8 +6,10 @@ from backend import AI_report
 from search import stock_search
 from comment import create_connection, create_table, insert_comment, get_all_comments
 
-# Set the page title
-st.title("주식 정보 분석 대시보드")
+
+@st.cache_data
+def cache_AI_report(ticker):
+    return AI_report(ticker)
 
 
 class SearchResult:
@@ -26,6 +28,9 @@ class SearchResult:
         return f"{self.symbol}: {self.name}"
 
 
+# Set the page title
+st.title("주식 정보 분석 대시보드")
+
 # Create a text input for search
 search_query = st.text_input("검색창")
 hits = stock_search(search_query)['hits']
@@ -42,7 +47,7 @@ tab1, tab2, tab3 = st.tabs(tabs)
 # Content for "회사 기본 정보" tab
 with tab1:
     stock = Stock(selected.symbol)
-    st.header("회사 기본 정보")
+    st.header(str(selected))
     # 거래량 시각화
     st.subheader(f'거래량')
     stock_data = stock.금융정보()
@@ -80,7 +85,7 @@ with tab2:
     st.header("AI 분석 보고서")
     if st.button("보고서 불러오기"):
         with st.spinner(text='In progress'):
-            data = AI_report(selected.symbol)
+            data = cache_AI_report(selected.symbol)
             st.success('Done')
         st.write(data)
 
@@ -90,12 +95,13 @@ with tab3:
     conn = create_connection()
     create_table(conn)
 
+    for comment in get_all_comments(conn):
+        comment_time, comment_text = comment
+        st.write(f"{comment_time}: {comment_text}")
+
     # 앞에서부터 그리기 때문에 댓글 입력창이 위에 나옴
     new_comment = st.text_area("댓글을 입력하세요")
     if st.button("댓글 작성"):
         insert_comment(conn, f'{selected.name} - {new_comment}')
         st.success("댓글이 작성되었습니다")
-
-    for comment in get_all_comments(conn):
-        comment_time, comment_text = comment
-        st.write(f"{comment_time}: {comment_text}")
+        st.rerun()

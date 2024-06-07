@@ -28,5 +28,5 @@ def insert_comment(conn, comment):
 # 모든 댓글 조회 함수
 def get_all_comments(conn):
     with conn:
-        comments = conn.execute('SELECT created_at, comment FROM comments').fetchall()
+        comments = conn.execute('SELECT created_at, comment FROM comments ORDER BY created_at DESC').fetchall()
     yield from comments
