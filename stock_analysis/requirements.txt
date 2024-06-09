@@ -1,6 +1,6 @@
 yfinance
 langchain
-langchain_openai
+langchain-openai
 ipython
 streamlit
 meilisearch
