@@ -30,7 +30,7 @@ def bootstrap_wines():
 
 
 def wine_search(query):
-    return vectorstore.similarity_search_with_relevance_scores(query)
+    return vectorstore.similarity_search(query)
 
 
 if __name__ == '__main__':
