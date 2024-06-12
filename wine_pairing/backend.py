@@ -16,10 +16,10 @@ load_dotenv()
 llm = ChatOpenAI(model='gpt-4o', api_key=os.getenv('OPENAI_API_KEY'), temperature=0)
 
 
-def wine_retrieval(analysis):
+def wine_retrieval(food_taste):
     return {
-        'analysis': analysis,
-        'markdown': '\n'.join([d.page_content for d in wine_search(analysis)]),
+        'food': food_taste,
+        'reviews': '\n'.join([d.page_content for d in wine_search(food_taste)]),
     }
 
 def recommend_wine(query: str, image_urls: list = None):
@@ -39,9 +39,9 @@ Your task is to accurately identify an appropriate wine pairing based on the pro
 - Carefully read the food description provided within triple quotes.
 - Identify key characteristics of the food, including flavors, textures, cooking methods, and any prominent ingredients.
 
-2. **Wine Identification**:
-- Based on the identified characteristics of the food, determine a specific type of wine that would complement it well.
-- Consider elements such as the intensity of flavors, richness, sweetness, and overall profile of the food.
+2. **Wine Review Analysis**:
+- Carefully read the wine review and metadata provided within triple quotes.
+- Identify key characteristics of the wine, including aroma, flavor, tannin structure, acidity, body, and finish.
 
 3. **Pairing Recommendation**:
 - Recommend a specific wine (including grape variety, region of origin, and possible vintage) that pairs well with the described food.
@@ -52,18 +52,35 @@ Your task is to accurately identify an appropriate wine pairing based on the pro
 **Food**:
 ```Triple-cooked pork belly with a crispy skin, served with a tangy apple and fennel slaw, and a rich, savory jus.```
 
+**Wine Review**:
+```
+winery: Barossa Valley Shiraz
+description: This full-bodied Shiraz from Barossa Valley, Australia, boasts rich flavors of dark berries, black pepper, and a hint of vanilla. It has a robust tannin structure and a long, spicy finish.
+points: 92
+price: 30
+variety: Shiraz
+```
+
 **Wine Pairing Recommendation**:
 ```A full-bodied red wine such as a Shiraz from Barossa Valley, Australia, would pair excellently with the triple-cooked pork belly. The wine’s robust tannins and dark fruit flavors will complement the rich, savory notes of the pork, while its hint of spice will enhance the tangy apple and fennel slaw. The acidity in the Shiraz will cut through the fat of the pork, creating a balanced and harmonious dining experience.```
 
 ### Now, provide a food description in triple quotes for the system to recommend a wine pairing:
-{markdown}
+**Food**:
+```
+{food}
+```
+
+**Wine Review**:
+```
+{reviews}
+```
 """),
     ])
 
     template = []
     if image_urls:
         template += [{'image_url': {'url': image_url}} for image_url in image_urls]
-    template += [{'text': '{analysis}'}]
+    template += [{'text': '{food}'}]
     template += [{'text': query}]
     sommelier_prompt += HumanMessagePromptTemplate.from_template(template=template)
 
@@ -80,7 +97,7 @@ def recommend_food(query: str, image_urls: list = None):
         ("system", """
 You are ChatGPT, a professional sommelier who has gone through a rigorous training process step by step, driven by a deep curiosity about wine. You possess a keen sense of smell, a keen sense of exploration, and an awareness of the many details in wine.
 
-Your task is to accurately identify the wine in question and recommend an appropriate pairing based on the provided wine reviews in triple quotes.
+Your task is to accurately identify the wine in question and recommend an appropriate food pairing based on the provided wine reviews in triple quotes.
 
 ### Task Instructions:
 
@@ -109,11 +126,11 @@ Your task is to accurately identify the wine in question and recommend an approp
 
 
 if __name__ == '__main__':
-    response = recommend_food(
+    food_response = recommend_food(
         query="이 와인에 어울리는 음식은 무엇인가요?",
         image_urls=["https://images.vivino.com/thumbs/GpcSXs2ERS6niDxoAsvESA_pb_x600.png"],
     ).invoke({})
-    response = recommend_wine(
+    wine_response = recommend_wine(
         query="이 음식과 어울리는 와인은 무엇인가요?",
         image_urls=["https://postfiles.pstatic.net/MjAyMjEyMTRfMTYg/MDAxNjcwOTcyMzUwNTQ2.B6BzZhndOrrRR_W3ujI3RgBhoCwae-k2r_cC7lTtnOgg.k4TH4ixWUXrC-DRLDDYgyvDZvo6wWD1Hu9RyWWKCf-kg.JPEG.totos1207/돼지_두루치기_(1).jpg?type=w966"],
     ).invoke({})
