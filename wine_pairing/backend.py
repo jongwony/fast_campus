@@ -13,7 +13,7 @@ from retrieval import wine_search
 load_dotenv()
 
 # 환경 변수 읽기
-llm = ChatOpenAI(model='gpt-4o', api_key=os.getenv('OPENAI_API_KEY'), temperature=0)
+llm = ChatOpenAI(model='gpt-4o', api_key=os.getenv('OPENAI_API_KEY'), temperature=0, max_tokens=4096)
 
 
 def wine_retrieval(food_taste):
@@ -24,8 +24,13 @@ def wine_retrieval(food_taste):
 
 def recommend_wine(query: str, image_urls: list = None):
     taster_prompt = ChatPromptTemplate.from_messages([
-        ("user", f"""입력 질문이 제공되면, 질문 내용 중 요리를 식별하고 그 요리의 맛이 어떤지 설명해 주세요: {query}"""),
+        ("system", f"""When provided with an input question, please identify the dish in question and describe what it tastes like"""),
     ])
+    template = []
+    if image_urls:
+        template += [{'image_url': {'url': image_url}} for image_url in image_urls]
+    template += [{'text': query}]
+    taster_prompt += HumanMessagePromptTemplate.from_template(template=template)
 
     sommelier_prompt = ChatPromptTemplate.from_messages([
         ("system", """
@@ -76,14 +81,6 @@ variety: Shiraz
 ```
 """),
     ])
-
-    template = []
-    if image_urls:
-        template += [{'image_url': {'url': image_url}} for image_url in image_urls]
-    template += [{'text': '{food}'}]
-    template += [{'text': query}]
-    sommelier_prompt += HumanMessagePromptTemplate.from_template(template=template)
-
     return taster_prompt | llm | StrOutputParser() | RunnableLambda(wine_retrieval) | sommelier_prompt | llm | StrOutputParser()
 
 
@@ -125,6 +122,30 @@ Your task is to accurately identify the wine in question and recommend an approp
     return prompt | llm | StrOutputParser()
 
 
+def recommend_wine_structure_llm(llm: ChatOpenAI):
+    json_schema = {
+        "title": "food_recommendation",
+        "description": "Your task is to accurately identify an appropriate wine pairing based on the provided food description.",
+        "type": "object",
+        "properties": {
+            "food": {
+                "type": "string",
+                "description": "Identify key characteristics of the food, including flavors, textures, cooking methods, and any prominent ingredients.",
+            },
+            "wine_review": {
+                "type": "string",
+                "description": "Identify key characteristics of the wine, including aroma, flavor, tannin structure, acidity, body, and finish.",
+            },
+            "pairing": {
+                "type": "integer",
+                "description": "Recommend a specific wine (including grape variety, region of origin, and possible vintage) that pairs well with the described food.",
+            },
+        },
+        "required": ["pairing"],
+    }
+    return llm.with_structured_output(json_schema, include_raw=True)
+
+
 if __name__ == '__main__':
     food_response = recommend_food(
         query="이 와인에 어울리는 음식은 무엇인가요?",
@@ -132,5 +153,7 @@ if __name__ == '__main__':
     ).invoke({})
     wine_response = recommend_wine(
         query="이 음식과 어울리는 와인은 무엇인가요?",
-        image_urls=["https://postfiles.pstatic.net/MjAyMjEyMTRfMTYg/MDAxNjcwOTcyMzUwNTQ2.B6BzZhndOrrRR_W3ujI3RgBhoCwae-k2r_cC7lTtnOgg.k4TH4ixWUXrC-DRLDDYgyvDZvo6wWD1Hu9RyWWKCf-kg.JPEG.totos1207/돼지_두루치기_(1).jpg?type=w966"],
+        image_urls=["https://www.shutterstock.com/ko/blog/wp-content/uploads/sites/17/2018/11/shutterstock_1068672764.jpg"],
     ).invoke({})
+    # 구조화된 부분을 사용하는 곳이 없기 때문에 따로 빼둠
+    result = recommend_wine_structure_llm(llm).invoke(wine_response)

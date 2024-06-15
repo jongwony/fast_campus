@@ -48,7 +48,6 @@ if st.button("Pair"):
         chain = recommend_wine(
             query=description,
             image_urls=image_urls,
-
         )
 
     response = chain.invoke({})
