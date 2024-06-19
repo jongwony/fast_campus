@@ -16,22 +16,27 @@ load_dotenv()
 llm = ChatOpenAI(model='gpt-4o', api_key=os.getenv('OPENAI_API_KEY'), temperature=0, max_tokens=4096)
 
 
-def wine_retrieval(food_taste):
+def wine_retrieval(taste):
     return {
-        'food': food_taste,
-        'reviews': '\n'.join([d.page_content for d in wine_search(food_taste)]),
+        'food': taste,
+        'reviews': '\n'.join([d.page_content for d in wine_search(taste)]),
     }
 
-def recommend_wine(query: str, image_urls: list = None):
+
+def taste_food(x):
     taster_prompt = ChatPromptTemplate.from_messages([
         ("system", f"""When provided with an input question, please identify the dish in question and describe what it tastes like"""),
     ])
     template = []
-    if image_urls:
-        template += [{'image_url': {'url': image_url}} for image_url in image_urls]
-    template += [{'text': query}]
+    if x['image_urls']:
+        template += [{'image_url': {'url': image_url}} for image_url in x['image_urls']]
+    template += [{'text': x['query']}]
     taster_prompt += HumanMessagePromptTemplate.from_template(template=template)
 
+    return taster_prompt | llm | StrOutputParser()
+
+
+def recommend_wine(x):
     sommelier_prompt = ChatPromptTemplate.from_messages([
         ("system", """
 You are ChatGPT, a professional sommelier who has gone through a rigorous training process step by step, driven by a deep curiosity about wine. You possess a keen sense of smell, a keen sense of exploration, and an awareness of the many details in wine.
@@ -81,10 +86,10 @@ variety: Shiraz
 ```
 """),
     ])
-    return taster_prompt | llm | StrOutputParser() | RunnableLambda(wine_retrieval) | sommelier_prompt | llm | StrOutputParser()
+    return sommelier_prompt | llm | StrOutputParser()
 
 
-def recommend_food(query: str, image_urls: list = None):
+def recommend_food(x):
     """
     참고정보 MRO
     ChatPromptTemplate -> BasePromptTemplate
@@ -114,9 +119,9 @@ Your task is to accurately identify the wine in question and recommend an approp
     ])
 
     template = []
-    if image_urls:
-        template += [{'image_url': {'url': image_url}} for image_url in image_urls]
-    template += [{'text': query}]
+    if x['image_urls']:
+        template += [{'image_url': {'url': image_url}} for image_url in x['image_urls']]
+    template += [{'text': x['query']}]
     prompt += HumanMessagePromptTemplate.from_template(template=template)
 
     return prompt | llm | StrOutputParser()
@@ -147,13 +152,16 @@ def recommend_wine_structure_llm(llm: ChatOpenAI):
 
 
 if __name__ == '__main__':
-    food_response = recommend_food(
-        query="이 와인에 어울리는 음식은 무엇인가요?",
-        image_urls=["https://images.vivino.com/thumbs/GpcSXs2ERS6niDxoAsvESA_pb_x600.png"],
-    ).invoke({})
-    wine_response = recommend_wine(
-        query="이 음식과 어울리는 와인은 무엇인가요?",
-        image_urls=["https://www.shutterstock.com/ko/blog/wp-content/uploads/sites/17/2018/11/shutterstock_1068672764.jpg"],
-    ).invoke({})
+    recommend_food_chain = RunnableLambda(recommend_food)
+    food_response = RunnableLambda(recommend_food).invoke({
+        "query": "이 와인에 어울리는 음식은 무엇인가요?",
+        "image_urls": ["https://images.vivino.com/thumbs/GpcSXs2ERS6niDxoAsvESA_pb_x600.png"],
+    })
+    recommend_wine_chain = RunnableLambda(taste_food) | RunnableLambda(wine_retrieval) | RunnableLambda(recommend_wine)
+    wine_response = recommend_wine_chain.invoke({
+        'query': '이 음식과 어울리는 와인은 무엇인가요?',
+        'image_urls': ['https://www.shutterstock.com/ko/blog/wp-content/uploads/sites/17/2018/11/shutterstock_1068672764.jpg'],
+    })
+
     # 구조화된 부분을 사용하는 곳이 없기 때문에 따로 빼둠
     result = recommend_wine_structure_llm(llm).invoke(wine_response)
