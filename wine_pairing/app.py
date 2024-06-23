@@ -1,7 +1,7 @@
 from base64 import b64encode
 
 import streamlit as st
-from backend import recommend_wine, recommend_food
+from backend import chain_recommend_food, chain_recommend_wine
 
 # Title of the web app
 st.title("Food and Wine Pairing")
@@ -40,15 +40,12 @@ if st.button("Pair"):
     
     # Example processing (this is where the pairing logic would go)
     if pairing_type == "Food Pairing":
-        chain = recommend_food(
-            query=description,
-            image_urls=image_urls,
-        )
+        chain = chain_recommend_food()
     else:
-        chain = recommend_wine(
-            query=description,
-            image_urls=image_urls,
-        )
+        chain = chain_recommend_wine()
 
-    response = chain.invoke({})
+    response = chain.invoke({
+        'query': description,
+        'image_urls': image_urls,
+    })
     st.write(response)
