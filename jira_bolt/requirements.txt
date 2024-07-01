@@ -1,0 +1,3 @@
+atlassian-python-api
+python-dotenv
+ipython
