@@ -1,3 +1,6 @@
 atlassian-python-api
 python-dotenv
 ipython
+langchain
+langchain-openai
+slack_bolt
