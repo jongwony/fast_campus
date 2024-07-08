@@ -1,58 +1,45 @@
-import os
+from typing import Union
 
 from atlassian import Jira
-from dotenv import load_dotenv
 
-load_dotenv()
+from issue_schema import TaskIssue, BugIssue
 
 
 class CustomJira(Jira):
-    """
-    self.get_all_custom_fields() 로 custom field id 를 찾아서 사용할 수 있음
-    """
     fields = None
 
-    def __init__(self):
-        super().__init__(
-            url='https://productivitysolutionsinc.atlassian.net',
-            username='fc.jongwony@gmail.com',
-            password=os.getenv('ATLASSIAN_API_KEY'),
-            cloud=True,
-        )
-
-    def create_issue(self):
+    def create_issue(self, update_history=False, update=None):
         """
         Python 3.12 부터는 override 라는 데코레이터가 있다
         https://docs.python.org/3/whatsnew/3.12.html#pep-698-override-decorator-for-static-typing
         """
-        return super().create_issue(self.fields)
+        return super().create_issue(self.fields, update_history, update)
 
-    def set_fields(self, fields: dict):
-        self.fields = fields
+    def set_fields(self, issue: Union[BugIssue, TaskIssue], reporter_email: str, assignee_email: str):
+        self.fields = issue.make_fields(
+            self.get_user_id_from_email(reporter_email),
+            self.get_user_id_from_email(assignee_email),
+        )
 
-    def task_fields(self, summary: str, description: str):
-        return {
-            'project': {'key': 'KAN'},
-            'issuetype': {'name': '작업'},
-            'summary': summary,
-            'description': description,
-        }
-
-    def bug_fields(self, summary: str, description: str, stage: str):
-        return {
-            'project': {'key': 'KAN'},
-            'issuetype': {'name': '버그'},
-            'summary': summary,
-            'description': description,
-            'customfield_10033': {'value': stage},
-        }
+    def get_user_id_from_email(self, email):
+        response = self.get(
+            self.resource_url('user/search'),
+            params={'query': email},
+        )
+        try:
+            return response[0]['accountId']
+        except IndexError:
+            return None
 
 
 if __name__ == '__main__':
-    jira = CustomJira()
-    # jira.get_all_custom_fields()
-    # fields = jira.task_fields('테스트', '테스트')
-    fields = jira.bug_fields('테스트', '테스트', 'dev')
-    jira.set_fields(fields)
-    response = jira.create_issue()
-    print(response)
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    jira = CustomJira(
+        url='https://productivitysolutionsinc.atlassian.net',
+        username='fc.jongwony@gmail.com',
+        password=os.getenv('ATLASSIAN_API_KEY'),
+        cloud=True,
+    )
+    print(jira.get_user_id_from_email('fc.jongwony@gmail.com'))
