@@ -59,7 +59,7 @@ def jira_field(inputs):
     return prompt | model | parser
 
 
-def structured_jira_issue(conversations):
+def structured_jira_issue(conversations: str):
     full_chain = jira_issue_type() | jira_field
     return full_chain.invoke(conversations)
 

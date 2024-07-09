@@ -54,7 +54,6 @@ def jira_create(event, say):
         user_name = slack_users_map[msg['user']]['real_name']
         refined_text = f'{user_name}: """{msg["text"]}"""\n'
         conversations_str += refined_text
-        
     print(conversations_str)
 
     assignee = slack_users_map[event['user']]       # 이모지를 다는 사람(담당자) 이름 가져오기

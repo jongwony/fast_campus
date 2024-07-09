@@ -15,7 +15,8 @@ class CustomJira(Jira):
         """
         return super().create_issue(self.fields, update_history, update)
 
-    def set_fields(self, issue: Union[BugIssue, TaskIssue], reporter_email: str, assignee_email: str):
+    def set_fields(self, issue: Union[BugIssue, TaskIssue],
+                   reporter_email: str, assignee_email: str):
         self.fields = issue.make_fields(
             self.get_user_id_from_email(reporter_email),
             self.get_user_id_from_email(assignee_email),
