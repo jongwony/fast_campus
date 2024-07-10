@@ -35,6 +35,8 @@ def jira_issue_type():
     """
     return {
         'conversations': RunnablePassthrough(),
+        # Issue 클래스가 pydantic인 경우 dictionary로 변환하여 itemgetter로 값을 가져올 수 있습니다.
+        # Issue 클래스가 pydantic v1 인 경우 class로 변환하여 attrgetter로 값을 가져올 수 있습니다.
         'issue_type': model.with_structured_output(Issue) | itemgetter('issue_type'),
     }
 
@@ -78,4 +80,5 @@ Error code: 429 - {'error': {'message': 'Request too large for gpt-4o in organiz
     최종원 Jongwon Choi: """리퀘스트가 너무 크다고 하네요. 토큰 정보를 줄여야 한다고 합니다. 사용자에게 이런 경우 새로운 스레드를 만들어서 다시 시도하라고 알려주는 것이 좋을 것 같습니다."""
     최종원 Jongwon Choi: """테스트 서버에서 발생했습니다. 제가 작업할게요."""
     '''
+    # response = model.with_structured_output(Issue).invoke(conversations)
     response = structured_jira_issue(conversations)
