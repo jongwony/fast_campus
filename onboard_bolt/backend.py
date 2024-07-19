@@ -31,7 +31,7 @@ def onboard():
         format_doc = '\n\n---\n\n'.join([
             f'Title: {doc.metadata["title"]}\n'
             f'Sub Title: {doc.metadata.get("sub_header", "")}\n' 
-            f'Page Content: {doc.page_content}\n'
+            f'Page Content: """{doc.page_content}"""\n'
             f'Source Link: {doc.metadata["link"]}'
             for doc in docs
         ])
