@@ -9,6 +9,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def information_schema():
+    return """
+WITH
+  TableDescription AS (
+  SELECT
+    table_schema,
+    table_name,
+    option_value table_description
+  FROM
+    chinook.INFORMATION_SCHEMA.TABLE_OPTIONS
+  WHERE
+    option_name = 'description'),
+  ColumnDescription AS (
+  SELECT
+    table_schema,
+    table_name,
+    data_type,
+    column_name,
+    description
+  FROM
+    chinook.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS)
+SELECT
+  *
+FROM
+  TableDescription
+JOIN
+  ColumnDescription
+USING
+  (table_schema,
+    table_name)
+"""
+
+
 def get_values(spreadsheet_id, range_name):
     """
     Creates the batch_update the user has access to.
@@ -37,8 +70,7 @@ def get_values(spreadsheet_id, range_name):
 
 if __name__ == '__main__':
     # Pass: spreadsheet_id, and range_name
-    results = get_values(
-        "1S5kQhnRyXKPWqqN9db9_GE_qtCT8oFqFGLG7tsUj5Sg", "chinook")
+    results = get_values("1S5kQhnRyXKPWqqN9db9_GE_qtCT8oFqFGLG7tsUj5Sg", "chinook")
     df = pd.DataFrame(results['values'][1:], columns=results['values'][0])
 
     # Construct a BigQuery client object.

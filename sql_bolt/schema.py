@@ -9,15 +9,14 @@ def test_create_table_query():
     """
 
 
-def generate_create_table_query(table_schema, table_name, columns, table_comment=None):
+def generate_create_table_query(table_schema, table_name, columns, table_description=None):
     query = f"CREATE TABLE `{table_schema}.{table_name}` (\n"
     for column in columns:
-        query += f'  `{column["column_name"]}` {column["data_type"]}'
-        query += f' OPTIONS(description="{column["description"]}"),\n'
+        query += f' `{column["column_name"]}` `{column["data_type"]}` OPTIONS(description="{column["description"]}"),\n'
     query = query.rstrip(',\n')
-    query += "\n)"
-    if table_comment:
-        query += f' OPTIONS(description="{table_comment}")'
+    query += '\n)'
+    if table_description:
+        query += f' OPTIONS(description="{table_description}")'
     query += ";"
     return query
 
@@ -48,5 +47,5 @@ if __name__ == '__main__':
                 "description": "The time the user was created",
             }
         ],
-        table_comment='A table to store user information'
+        table_description='A table to store user information',
     )

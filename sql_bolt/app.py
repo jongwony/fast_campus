@@ -2,8 +2,7 @@ import os
 import base64
 
 import httpx
-from slack_bolt import App
-from slack_bolt.context.say import Say
+from slack_bolt import App, Say
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from dotenv import load_dotenv
 
@@ -54,6 +53,3 @@ def app_mention(event, say: Say):
 # Start your app
 if __name__ == "__main__":
     SocketModeHandler(app, os.getenv('SLACK_APP_TOKEN')).start()
-
-
-

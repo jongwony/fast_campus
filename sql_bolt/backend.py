@@ -2,13 +2,12 @@ import os
 from typing import List, Set
 from operator import itemgetter
 
-import pandas as pd
-from langchain_core.documents import Document
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain_openai.chat_models import ChatOpenAI
+from langchain_openai.chat_models.base import ChatOpenAI
+from langchain_core.prompts.chat import ChatPromptTemplate
 from langchain.chains.sql_database.prompt import SQL_PROMPTS
+from langchain_core.output_parsers.string import StrOutputParser
+from langchain_core.runnables.passthrough import RunnablePassthrough
+from langchain_core.documents.base import Document
 from dotenv import load_dotenv
 
 from pinecone_loader import CustomLoader, vectorstore
@@ -27,7 +26,7 @@ model = ChatOpenAI(
 """
 loader = CustomLoader()
 loader.fetch_v1()
-data_catalog_df: pd.DataFrame = loader.v1
+data_catalog_df = loader.v1
 
 data_catalog_table = data_catalog_df.set_index(
     ['table_schema', 'table_name']
@@ -49,16 +48,14 @@ def group_by_table(docs: List[Document]) -> Set:
     ) for doc in docs)
 
 
-def generate(tables: Set[str]):
+def generate(table: set[tuple]) -> str:
     queries = []
-    for table in tables:
-        table_schema, table_name, table_description = table
-        columns = get_data_catalog_columns_map(table_schema, table_name)
+    for table_schema, table_name, table_description in table:
         ddl = generate_create_table_query(
             table_schema,
             table_name,
-            columns,
-            table_comment=table_description,
+            get_data_catalog_columns_map(table_schema, table_name),
+            table_description=table_description,
         )
         queries.append(ddl)
     return '\n\n'.join(queries)
@@ -70,12 +67,13 @@ def sql_chain():
     """
     retriever = vectorstore.as_retriever(search_kwargs={"k": 16})
 
-    # prompt를 직접 커스텀하여 사용할 수 있습니다.
-    with open("user_prompt.md") as f:
-        user_prompt = f.read()
+    with open('system_prompt.md') as f, open('user_prompt.md') as g:
+        system_prompt = f.read()
+        user_prompt = g.read()
     prompt = ChatPromptTemplate.from_messages([
-        ("placeholder", "{history}"),
-        ("human", user_prompt),
+        ('system', system_prompt),
+        ('placeholder', '{history}'),
+        ('human', user_prompt),
     ])
 
     # # ChatPromptTemplate과 PromptTemplate을 합성하여 사용하는 방법입니다.
@@ -87,15 +85,12 @@ def sql_chain():
 
     parser = StrOutputParser()
 
-    def conversations(x):
-        history = '\n'.join(
-            k[1] for k in x['history']
-            if isinstance(k[1], str)
-        )
-        question = x['question']
+    def conversations(d: dict) -> str:
+        history = '\n'.join(msg for _, msg in d['history'] if isinstance(msg, str))
+        question = d['question']
         return f'{history}\n{question}'
 
-    def top_k(x):
+    def top_k(x) -> int:
         return 10
 
     return {
@@ -107,8 +102,8 @@ def sql_chain():
 
 
 if __name__ == '__main__':
-    # template = SQL_PROMPTS['googlesql']
-    # template.get_prompts()[0].pretty_print()
+    template = SQL_PROMPTS['googlesql']
+    template.get_prompts()[0].pretty_print()
 
     # template.invoke(
     #     top_k=10,
@@ -116,27 +111,19 @@ if __name__ == '__main__':
     #     question='음악 장르별 판매량을 조회하려고 합니다',
     # )
 
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 16})
-    rag_response = retriever.invoke('음악 장르별 판매량을 조회하려고 합니다')
-
-    # mytable 테스트
-    mytable = get_data_catalog_columns_map('chinook', 'mytable')
-
     # retrieve된 문서를 테이블별로 그룹핑 테스트
-    groups = group_by_table(rag_response)
-
-    # 테이블별 DDL 생성 테스트
-    table_info = generate(groups)
+    # retriever = vectorstore.as_retriever(search_kwargs={'k': 5})
+    # response = retriever.invoke('음악 장르별 판매량을 조회해 주세요')
+    # grouped = group_by_table(response)
 
     # SQL 체인 테스트
-    response = sql_chain().invoke({
-        'history': [
-            ('human', '음악 장르별로 판매량 데이터를 조회하려고 합니다.'),
-        ],
-        'question': '위의 내용을 바탕으로 쿼리를 작성해 주세요',
-    })
-
     # response = sql_chain().invoke({
     #     'history': [],
     #     'question': '음악 장르별로 판매량 데이터를 조회하려고 합니다.',
     # })
+    response = sql_chain().invoke(
+        {
+            'question': '@Secretary 위 데이터를 조회해 주세요',
+            'history': [('human', '음악 장르별 판매량을 조회해 주세요')],
+        }
+    )

@@ -1,13 +1,10 @@
-"""
-https://python.langchain.com/v0.2/docs/integrations/vectorstores/pinecone/
-"""
 import os
 
+from dotenv import load_dotenv
 from google.cloud import bigquery
 from google.api_core.exceptions import NotFound
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_pinecone.vectorstores import PineconeVectorStore
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -55,35 +52,36 @@ class CustomLoader:
     (table_schema,
         table_name)
     """
-    v2_table_id = 'sigma-kayak-430300-a2.chinook._v2_metadata'
+    v1_table_id = 'sigma-kayak-430300-a2.chinook._v1_metadata'
 
     def __init__(self) -> None:
         self.bq_client = bigquery.Client()
-        self.v1 = None
         self.v2 = None
+        self.v1 = None
+        self.delete_set = None
+        self.upsert_set = None
 
     def load_v2(self):
-        query_job = self.bq_client.query(self.v2_query)
-        result = query_job.result()
-        df = result.to_dataframe()
-        # create unique insert id
-        df['table_description'] = df['table_description'].str.strip('"')
+        query_job = self.bq_client.query(self.v2_query)  # API request
+        rows = query_job.result()  # Waits for query to finish
+        df = rows.to_dataframe()
         df['id'] = df[['table_schema', 'table_name', 'column_name']].apply('.'.join, axis=1)
+        df['table_description'] = df['table_description'].str.strip('"')
         self.v2 = df
 
     def check_v1(self):
         try:
-            self.bq_client.get_table(self.v2_table_id)
+            self.bq_client.get_table(self.v1_table_id)  # Make an API request.
         except NotFound:
             return False
         else:
             return True
 
     def fetch_v1(self):
-        query = f"SELECT * FROM {self.v2_table_id}"
-        query_job = self.bq_client.query(query)
-        result = query_job.result()
-        self.v1 = result.to_dataframe()
+        query = f"SELECT * FROM {self.v1_table_id}"
+        query_job = self.bq_client.query(query)  # API request
+        rows = query_job.result()  # Waits for query to finish
+        self.v1 = rows.to_dataframe()
 
     def operation(self):
         if self.v1 is not None:
@@ -117,7 +115,7 @@ class CustomLoader:
         )
         job = self.bq_client.load_table_from_dataframe(
             self.v2,
-            self.v2_table_id,
+            self.v1_table_id,
             job_config=job_config
         )
         return job.result()
