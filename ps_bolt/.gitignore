@@ -1,0 +1,5 @@
+*.db
+.env
+__pycache__/
+venv/
+sigma-kayak-430300-a2-692f92af7b26.json
